@@ -1,0 +1,40 @@
+name: "ssd96"
+platform: "onnxruntime_onnx"
+default_model_filename: "ssd96-mobile.onnx"
+max_batch_size: 1
+input [
+  {
+    name: "input_2"
+    data_type: TYPE_FP32
+    dims: [96, 96, 3]
+    format: FORMAT_NHWC
+  }
+]
+output [
+  {
+    name: "tf_op_layer_concat"
+    data_type: TYPE_FP32
+    dims: [850, 3]
+  },
+  {
+    name: "tf_op_layer_concat_1"
+    data_type: TYPE_FP32
+    dims: [850, 4]
+  }
+]
+
+instance_group {
+  kind: KIND_GPU
+  count: 1
+  gpus: 0
+}
+
+# Enable TensorRT acceleration running in gpu instance. It might take several
+# minutes during intialization to generate tensorrt online caches.
+#optimization { execution_accelerators {
+#  gpu_execution_accelerator : [ {
+#    name : "tensorrt"
+#    parameters { key: "precision_mode" value: "FP16" }
+#    parameters { key: "max_workspace_size_bytes" value: "512000000"}
+#}]
+#}}
