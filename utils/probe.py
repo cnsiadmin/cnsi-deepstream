@@ -14,47 +14,6 @@ def debug_probe(pad,info,u_data):
     print("It is running")
     return Gst.PadProbeReturn.OK
 
-def image_meta_buffer_probe(pad,info,u_data):
-    frame_number=0
-    num_rects=0
-    gst_buffer = info.get_buffer()
-    if not gst_buffer:
-        print("Unable to get GstBuffer ")
-        return
-    batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
-    l_frame = batch_meta.frame_meta_list
-    while l_frame is not None:
-        # *****probe frame start*****
-        try:
-            frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
-            print("It's running!")
-        except StopIteration:
-            break
-
-        l_obj = frame_meta.obj_meta_list
-        num_rects = frame_meta.num_obj_meta
-
-        while l_obj is not None:
-            # @@@@@probe obj start@@@@@
-            try:
-                obj_meta=pyds.NvDsObjectMeta.cast(l_obj.data)
-            except StopIteration:
-                break
-
-            # @@@@@go to next frame@@@@@
-            try:
-                l_obj = l_obj.next
-            except StopIteration:
-                break
-
-        # *****go to next frame*****
-        try:
-            l_frame = l_frame.next
-        except StopIteration:
-            break
-
-
-    return Gst.PadProbeReturn.OK
 
 def osd_sink_pad_buffer_probe(pad,info,u_data):
     frame_number=0
@@ -146,110 +105,6 @@ def osd_sink_pad_buffer_probe_dummy(pad,info,u_data):
     return Gst.PadProbeReturn.OK
 
 
-def pgie_src_pad_buffer_probe(pad, info, u_data):
-
-    gst_buffer = info.get_buffer()
-    if not gst_buffer:
-        print("Unable to get GstBuffer ")
-        return
-    batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
-    l_frame = batch_meta.frame_meta_list
-
-    while l_frame is not None:
-        try:
-            frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
-
-        except StopIteration:
-            break
-        print("method of frame meta data: ", dir(frame_meta))
-        print("source frame height", frame_meta.source_frame_height)
-        print("source frame width", frame_meta.source_frame_width)
-        l_obj = frame_meta.obj_meta_list
-        obj_id = 0
-        while l_obj is not None:
-            obj_id += 1
-            try:
-                # Casting l_obj.data to pyds.NvDsObjectMeta
-                obj_meta = pyds.NvDsObjectMeta.cast(l_obj.data)
-            except StopIteration:
-                break
-            print("method of object meta data: ", dir(obj_meta))
-            print("obj id : ", obj_id,
-            "classifier_meta_list : ", obj_meta.classifier_meta_list, "\n",
-            "confidence : ", obj_meta.confidence, "\n",
-            "obj_label : ", obj_meta.obj_label,  "\n",
-            "obj_user_meta_list : ", obj_meta.obj_user_meta_list,  "\n",
-            "rect_params : ", obj_meta.rect_params.top, obj_meta.rect_params.left, obj_meta.rect_params.height, obj_meta.rect_params.width, "\n",
-            "text_params : ", obj_meta.text_params.display_text)
-
-            try:
-                l_obj = l_obj.next
-            except StopIteration:
-                break
-        try:
-            l_frame = l_frame.next
-        except StopIteration:
-            break
-    return Gst.PadProbeReturn.OK
-
-def sgie_src_pad_buffer_probe(pad, info, u_data):
-
-    gst_buffer = info.get_buffer()
-    if not gst_buffer:
-        print("Unable to get GstBuffer ")
-        return
-    batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
-    l_frame = batch_meta.frame_meta_list
-    #label_names = get_label_names_from_file("../models/ssd96/labels.txt")
-
-    # each frame
-    while l_frame is not None:
-        try:
-            frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
-        except StopIteration:
-            break
-        l_obj = frame_meta.obj_meta_list
-        #each object
-        while l_obj is not None:
-            try:
-                obj_meta = pyds.NvDsObjectMeta.cast(l_obj.data)
-            except StopIteration:
-                break
-
-            l_user = obj_meta.obj_user_meta_list
-            #Meta tensors of each object's object
-            while l_user is not None:
-                try:
-                    user_meta = pyds.NvDsUserMeta.cast(l_user.data)
-                except StopIteration:
-                    break
-                if (user_meta.base_meta.meta_type
-                    != pyds.NvDsMetaType.NVDSINFER_TENSOR_OUTPUT_META):
-                    continue
-                tensor_meta = pyds.NvDsInferTensorMeta.cast(user_meta.user_meta_data)
-                layers_info = []
-                for i in range(tensor_meta.num_output_layers):
-                    layer = pyds.get_nvds_LayerInfo(tensor_meta, i)
-                    layers_info.append(layer)
-                    #print(layer)
-                    sub_object_list = ssd96_custom_parser(layers_info)
-                try:
-                    l_user = l_user.next
-                except StopIteration:
-                    break
-                #for sub_object in sub_object_list:
-                #    add_secondary_ssd96_obj_meta_to_frame(sub_object, batch_meta, frame_meta, obj_meta, label_names)
-
-            try:
-                l_obj=l_obj.next
-            except StopIteration:
-                break
-        try:
-            l_frame=l_frame.next
-        except StopIteration:
-            break
-    return Gst.PadProbeReturn.OK
-
 def api_probe(pad, info, u_data):
     global CNT_nonHelmet
 
@@ -260,64 +115,65 @@ def api_probe(pad, info, u_data):
     if not gst_buffer:
         print("Unable to get GstBuffer ")
         return
-
-    print(hash(gst_buffer))
     batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
     l_frame = batch_meta.frame_meta_list
-    frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
-
-    '''
-    n_frame=pyds.get_nvds_buf_surface(hash(gst_buffer),frame_meta.batch_id)
-    frame_image=np.array(n_frame,copy=True,order='C')
-    frame_image=cv2.cvtColor(frame_image,cv2.COLOR_RGBA2BGRA)
-    cv2.imwrite("rtsp_snapshot_test.jpg", frame_image)
-    '''
 
 
-    l_obj = frame_meta.obj_meta_list
-    #each object
-    while l_obj is not None:
+    while l_frame is not None:
         try:
-            obj_meta = pyds.NvDsObjectMeta.cast(l_obj.data)
-            print("obj id : {}".format(obj_meta.object_id))
-            print("first or secondary : {}".format(obj_meta.unique_component_id))
-            print("class id : {}".format(obj_meta.class_id))
+            frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
+            frame_number=frame_meta.frame_num
+        except StopIteration:
+            break
+        #@@@@@@@@@@@@ FRAME METADATA @@@@@@@@@@@@@@@@@
 
+        l_obj=frame_meta.obj_meta_list
+        num_rects = frame_meta.num_obj_meta
+
+        #*********** OBJECT METADATA ******************
+        while l_obj is not None:
+            try:
+                obj_meta=pyds.NvDsObjectMeta.cast(l_obj.data)
+            except StopIteration:
+                break
             if obj_meta.unique_component_id == 1:
                 people_cnt = people_cnt + 1
             elif obj_meta.unique_component_id == 2:
                 helmet_cnt = helmet_cnt + 1
-
+            try:
+                l_obj=l_obj.next
+            except StopIteration:
+                break
+        #*********** OBJECT METADATA ******************
+        if people_cnt > helmet_cnt:
+            CNT_nonHelmet +=1
+        else:
+            CNT_nonHelmet = 0
+        if CNT_nonHelmet > 60:
+            try:
+                screenshot = frame2image(gst_buffer, frame_meta)
+                send_no_helmet_event("http://unecom.iptime.org:8080/riskzero_ys/uapi/inputEventVideoAnalysis",
+                                     screenshot)
+            except Exception as e:
+                print(e)
+            CNT_nonHelmet = 0
+        #@@@@@@@@@@@@ FRAME META DATA @@@@@@@@@@@@@@@@@
+        try:
+            l_frame = l_frame.next
         except StopIteration:
             break
-        try:
-            l_obj=l_obj.next
-        except StopIteration:
-            break
-
-
-    if people_cnt > helmet_cnt:
-        CNT_nonHelmet = CNT_nonHelmet + 1
-    else:
-        CNT_nonHelmet = 0
-
-    if CNT_nonHelmet > 60:
-        CNT_nonHelmet = 0
-        try:
-            '''
-            print("sgie_src_pad_api_probe   1")
-            print(hash(gst_buffer))
-            print(frame_meta.batch_id)
-            n_frame=pyds.get_nvds_buf_surface(hash(gst_buffer),frame_meta.batch_id)
-            print("sgie_src_pad_api_probe   2")
-            frame_image=np.array(n_frame,copy=True,order='C')
-            print("sgie_src_pad_api_probe   3")
-            frame_image=cv2.cvtColor(frame_image,cv2.COLOR_RGBA2BGRA)
-            '''
-
-            send_no_helmet_event("http://unecom.iptime.org:8080/riskzero_ys/uapi/inputEventVideoAnalysis")
-        except Exception as e:
-            print(e)
-
-
     return Gst.PadProbeReturn.OK
+
+
+def frame2image(gst_buffer, frame_meta):
+    n_frame=pyds.get_nvds_buf_surface(hash(gst_buffer),frame_meta.batch_id)
+    '''
+        get_nvds_buf_surface는 segmentation fault 에러를 냅니다.
+        반드시 아래와 같이 앞 엘리먼트인 nvvidconv의 memory type을 다음과 같이 setting해주어야 합니다.
+        예시를 보기 위해 screenshot_test.py를 확인하세요.
+        mem_type = int(pyds.NVBUF_MEM_CUDA_UNIFIED)
+        nvvidconv.set_property("nvbuf-memory-type", mem_type)
+    '''
+    image=np.array(n_frame,copy=True,order='C')
+    image=cv2.cvtColor(image,cv2.COLOR_RGBA2BGRA)
+    return image

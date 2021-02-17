@@ -9,6 +9,7 @@ from common.bus_call import bus_call
 import os, argparse, json
 import pyds
 from utils.probe import osd_sink_pad_buffer_probe, api_probe
+from utils.probe_in_experiments import screenshottest_probe
 from utils.rtsp import create_source_bin, get_from_env
 
 
@@ -125,6 +126,15 @@ def main(config):
     sink.set_property('host', UDP_MULTICAST_ADDRESS)
     sink.set_property('port', UDP_MULTICAST_PORT)
     sink.set_property('async', True)
+
+    if not is_aarch64():
+        # Use CUDA unified memory in the pipeline so frames
+        # can be easily accessed on CPU in Python.
+        mem_type = int(pyds.NVBUF_MEM_CUDA_UNIFIED)
+        #streammux.set_property("nvbuf-memory-type", mem_type)
+        nvvidconv.set_property("nvbuf-memory-type", mem_type)
+        #nvvidconv2.set_property("nvbuf-memory-type", mem_type)
+        #tiler.set_property("nvbuf-memory-type", mem_type)
 
     ################################################################################
     ################### *** Define srcs and sinks to be proved  *** ################
