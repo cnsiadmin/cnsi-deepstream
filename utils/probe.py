@@ -4,6 +4,7 @@ from utils.api import send_no_helmet_event
 #from .parser import ssd96_custom_parser, add_secondary_ssd96_obj_meta_to_frame
 import cv2
 import numpy as np
+import threading
 
 PGIE_CLASS_ID_PERSON = 0
 PGIE_CLASS_ID_BAG = 1
@@ -151,9 +152,12 @@ def api_probe(pad, info, u_data):
             CNT_nonHelmet = 0
         if CNT_nonHelmet > 60:
             try:
-                screenshot = frame2image(gst_buffer, frame_meta)
-                send_no_helmet_event("http://unecom.iptime.org:8080/riskzero_ys/uapi/inputEventVideoAnalysis",
-                                     screenshot)
+                #screenshot = frame2image(gst_buffer, frame_meta)
+                #url_ = "http://unecom.iptime.org:8080/riskzero_ys/uapi/inputEventVideoAnalysis"
+                #thread_send = threading.Thread(target=send_no_helmet_event, args=(url_, screenshot))
+                #thread_send.start()
+                print("send")
+
             except Exception as e:
                 print(e)
             CNT_nonHelmet = 0
