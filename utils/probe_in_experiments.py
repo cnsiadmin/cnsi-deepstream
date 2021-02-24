@@ -45,7 +45,8 @@ def event_probe_test(pad,info,u_data):
             x, y, w, h = obj_meta.rect_params.left, obj_meta.rect_params.top, obj_meta.rect_params.width, obj_meta.rect_params.height
             c = obj_meta.confidence
             object_metadata_list.append([class_id,obj_label,object_id,x,y,w,h,c])
-        print(object_metadata_list)
+        #print(object_metadata_list)
+        event_manager.make_grit()
         #*********** OBJECT METADATA ******************
         #@@@@@@@@@@@@ FRAME METADATA @@@@@@@@@@@@@@@@@
         try:
