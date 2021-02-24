@@ -2,16 +2,13 @@ import sys
 sys.path.append('../')
 import gi
 gi.require_version('Gst', '1.0')
-gi.require_version('GstRtspServer', '1.0')
-from gi.repository import GObject, Gst, GstRtspServer
+from gi.repository import GObject, Gst
 from common.is_aarch_64 import is_aarch64
 from common.bus_call import bus_call
 import os, argparse, json
 import pyds
-from utils.probe import osd_sink_pad_buffer_probe, api_probe
-from utils.probe_in_experiments import screenshottest_probe
-from utils.rtsp import create_source_bin, get_from_env
-
+from utils.probe import osd_sink_pad_buffer_probe
+from utils.probe_in_experiments import debug_probe, event_probe_test
 
 def main(config):
     # Standard GStreamer initialization
@@ -31,11 +28,20 @@ def main(config):
         sys.stderr.write(" Unable to create Pipeline \n")
     # 1. Source element for reading from the file
     print("Creating Source \n ")
-    RTSPINPUT_URI = "rtsp://unecom1:test1234!@unecom.iptime.org/h264"
-    #RTSPINPUT_URI = "rtsp://admin:Tldosdptmdk2@223.171.56.203:554/profile2/media.smp"
-    source = create_source_bin(0, RTSPINPUT_URI)
+    source = Gst.ElementFactory.make("filesrc", "file-source")
     if not source:
         sys.stderr.write(" Unable to create Source \n")
+    # 2. Since the data format in the input file is elementary h264 stream,
+    # we need a h264parser
+    print("Creating H264Parser \n")
+    h264parser = Gst.ElementFactory.make("h264parse", "h264-parser")
+    if not h264parser:
+        sys.stderr.write(" Unable to create h264 parser \n")
+    # 3. Use nvdec_h264 for hardware accelerated decode on GPU
+    print("Creating Decoder \n")
+    decoder = Gst.ElementFactory.make("nvv4l2decoder", "nvv4l2-decoder")
+    if not decoder:
+        sys.stderr.write(" Unable to create Nvv4l2 Decoder \n")
     # 4. Create nvstreammux instance to form batches from one or more sources.
     streammux = Gst.ElementFactory.make("nvstreammux", "Stream-muxer")
     if not streammux:
@@ -70,19 +76,19 @@ def main(config):
     nvvidconv2 = Gst.ElementFactory.make("nvvideoconvert", "convertor2")
     if not nvvidconv2:
         sys.stderr.write(" Unable to create nvvidconv2 \n")
-    capsfilter1 = Gst.ElementFactory.make("capsfilter", "capsfilter1")
-    if not capsfilter1:
-        sys.stderr.write(" Unable to create capsfilter1 \n")
-    capsfilter2 = Gst.ElementFactory.make("capsfilter", "capsfilter2")
-    if not capsfilter2:
-        sys.stderr.write(" Unable to create capsfilter2 \n")
-    encoder = Gst.ElementFactory.make("nvv4l2h264enc", "encoder")
+    capsfilter = Gst.ElementFactory.make("capsfilter", "capsfilter")
+    if not capsfilter:
+        sys.stderr.write(" Unable to create capsfilter \n")
+    encoder = Gst.ElementFactory.make("avenc_mpeg4", "encoder")
     if not encoder:
         sys.stderr.write(" Unable to create encoder \n")
-    rtppay = Gst.ElementFactory.make("rtph264pay", "rtppay")
-    if not rtppay:
-        sys.stderr.write(" Unable to create rtppay \n")
-    sink = Gst.ElementFactory.make("udpsink", "udpsink")
+    codeparser = Gst.ElementFactory.make("mpeg4videoparse", "mpeg4-parser")
+    if not codeparser:
+        sys.stderr.write(" Unable to create codeparser \n")
+    container = Gst.ElementFactory.make("qtmux", "qtmux")
+    if not container:
+        sys.stderr.write(" Unable to create container \n")
+    sink = Gst.ElementFactory.make("filesink", "filesink")
     if not sink:
         sys.stderr.write(" Unable to create sink \n")
 
@@ -90,11 +96,11 @@ def main(config):
     ################################################################################
     ################### *** SET properties of each elements  *** ###################
     ################################################################################
-    streammux.set_property('width', 1280)
-    streammux.set_property('height', 720)
+    source.set_property('location', input_video)
+    streammux.set_property('width', 960)
+    streammux.set_property('height', 544)
     streammux.set_property('batch-size', 1)
     streammux.set_property('batched-push-timeout', 4000000)
-    streammux.set_property('live-source', 1)
 
     pgie.set_property('config-file-path', config['pgie_config'])
     sgie.set_property('config-file-path', config['sgie_config'])
@@ -113,28 +119,12 @@ def main(config):
     tracker.set_property('enable_batch_process', tracker_enable_batch_process)
     tracker.set_property('display-tracking-id', 1)
 
-
-    caps1 = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420")
-    #caps = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=RGBA")
-    capsfilter1.set_property("caps", caps1)
-    caps2 = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=RGBA")
-    capsfilter2.set_property("caps", caps2)
+    caps = Gst.Caps.from_string("video/x-raw, format=I420")
+    capsfilter.set_property("caps", caps)
     encoder.set_property("bitrate", 2000000)
-
-    UDP_MULTICAST_ADDRESS = '224.224.255.255'
-    UDP_MULTICAST_PORT = 5400
-    sink.set_property('host', UDP_MULTICAST_ADDRESS)
-    sink.set_property('port', UDP_MULTICAST_PORT)
-    sink.set_property('async', True)
-
-    if not is_aarch64():
-        # Use CUDA unified memory in the pipeline so frames
-        # can be easily accessed on CPU in Python.
-        mem_type = int(pyds.NVBUF_MEM_CUDA_UNIFIED)
-        #streammux.set_property("nvbuf-memory-type", mem_type)
-        nvvidconv.set_property("nvbuf-memory-type", mem_type)
-        #nvvidconv2.set_property("nvbuf-memory-type", mem_type)
-        #tiler.set_property("nvbuf-memory-type", mem_type)
+    sink.set_property("location", output_video)
+    sink.set_property("sync", 0)
+    sink.set_property("async", 0)
 
     ################################################################################
     ################### *** Define srcs and sinks to be proved  *** ################
@@ -142,7 +132,7 @@ def main(config):
     sinkpad = streammux.get_request_pad("sink_0")
     if not sinkpad:
         sys.stderr.write(" Unable to get the sink pad of streammux \n")
-    srcpad = source.get_static_pad("src")
+    srcpad = decoder.get_static_pad("src")
     if not srcpad:
         sys.stderr.write(" Unable to get source pad of decoder \n")
     osdsinkpad = nvosd.get_static_pad("sink")
@@ -153,13 +143,16 @@ def main(config):
     if not sgie_srcpad:
         sys.stderr.write(" Unable to get source pad of sgie_srcpad \n")
     osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
-    osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, api_probe, 0)
+    osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, event_probe_test, 0)
+    #sgie_srcpad.add_probe(Gst.PadProbeType.BUFFER, sgie_src_pad_buffer_probe, 0)
 
     ################################################################################
     ############# *** ADD elements into the pipeline and LINK them *** #############
     ################################################################################
     print("Adding elements to Pipeline \n")
     pipeline.add(source)
+    pipeline.add(h264parser)
+    pipeline.add(decoder)
     pipeline.add(streammux)
     pipeline.add(pgie)
     pipeline.add(sgie)
@@ -168,47 +161,34 @@ def main(config):
     pipeline.add(nvosd)
     pipeline.add(queue)
     pipeline.add(nvvidconv2)
-    pipeline.add(capsfilter1)
-    pipeline.add(capsfilter2)
+    pipeline.add(capsfilter)
     pipeline.add(encoder)
-    pipeline.add(rtppay)
+    pipeline.add(codeparser)
+    pipeline.add(container)
     pipeline.add(sink)
 
     print("Linking elements in the Pipeline \n")
+    source.link(h264parser)
+    h264parser.link(decoder)
     srcpad.link(sinkpad)
     streammux.link(pgie)
-    pgie.link(tracker)
-    tracker.link(sgie)
-    sgie.link(nvvidconv)
-    nvvidconv.link(capsfilter2)
-    capsfilter2.link(nvosd)
+    pgie.link(sgie)
+    sgie.link(tracker)
+    tracker.link(nvvidconv)
+    nvvidconv.link(nvosd)
     nvosd.link(queue)
     queue.link(nvvidconv2)
-    nvvidconv2.link(capsfilter1)
-    capsfilter1.link(encoder)
-    encoder.link(rtppay)
-    rtppay.link(sink)
+    nvvidconv2.link(capsfilter)
+    capsfilter.link(encoder)
+    encoder.link(codeparser)
+    codeparser.link(container)
+    container.link(sink)
 
     # create an event loop and feed gstreamer bus mesages to it
     loop = GObject.MainLoop()
     bus = pipeline.get_bus()
     bus.add_signal_watch()
     bus.connect ("message", bus_call, loop)
-
-    # create a GstRtspStreamer insttance
-    RTSPOUTPUTPORTNUM = get_from_env('RTSPOUTPUTPORTNUM', '9999')
-    RTSPOUTPUTPATH = get_from_env('RTSPOUTPUTPATH', '/cnsi') # The output URL's path
-    CODEC = "H264"
-    server = GstRtspServer.RTSPServer.new()
-    server.props.service = RTSPOUTPUTPORTNUM
-    server.attach(None)
-    factory = GstRtspServer.RTSPMediaFactory.new()
-    factory.set_launch( "( udpsrc name=pay0 port=%d buffer-size=524288 protocol=GST_RTSP_LOWER_TRANS_TCP caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=(string)%s, payload=96 \" )" % (UDP_MULTICAST_PORT, CODEC))
-    factory.set_shared(True)
-    server.get_mount_points().add_factory(RTSPOUTPUTPATH, factory)
-    print("RTSP output stream service is ready \n")
-
-
 
     # start play back and listen to events
     print("Starting pipeline \n")

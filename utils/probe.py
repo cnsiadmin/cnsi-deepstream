@@ -152,10 +152,10 @@ def api_probe(pad, info, u_data):
             CNT_nonHelmet = 0
         if CNT_nonHelmet > 60:
             try:
-                #screenshot = frame2image(gst_buffer, frame_meta)
-                #url_ = "http://unecom.iptime.org:8080/riskzero_ys/uapi/inputEventVideoAnalysis"
-                #thread_send = threading.Thread(target=send_no_helmet_event, args=(url_, screenshot))
-                #thread_send.start()
+                screenshot = frame2image(gst_buffer, frame_meta)
+                url_ = "http://unecom.iptime.org:8080/riskzero_ys/uapi/inputEventVideoAnalysis"
+                thread_send = threading.Thread(target=send_no_helmet_event, args=(url_, screenshot))
+                thread_send.start()
                 print("send")
 
             except Exception as e:

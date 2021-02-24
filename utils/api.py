@@ -5,7 +5,7 @@ import base64
 
 def send_no_helmet_event(url, screenshot):
 
-    RTSPINPUT_URI = "rtsp://admin:Tldosdptmdk2@223.171.56.203:554/profile2/media.smp"
+    #RTSPINPUT_URI = "rtsp://admin:Tldosdptmdk2@223.171.56.203:554/profile2/media.smp"
     # cap = cv2.VideoCapture(RTSPINPUT_URI)
     # ret, frame = cap.read()
     # converted = cv2.imencode('.jpg', frame)[1].tostring()
