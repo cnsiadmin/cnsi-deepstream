@@ -1,14 +1,15 @@
 {
-  "input_video" : "sample_videos/event_d-02.264",
-  "output_video" : "output_videos/headhelmet.mp4",
-  "pgie_config" : "models/peoplenet/peoplenet.cfg",
-  "sgie_config" : "models/headhelmet/headhelmet.cfg",
-  "tracker" : {
-    "tracker-width" : 640,
-    "tracker-height" : 384,
-    "gpu-id" : 0,
-    "ll-lib-file" : "/opt/nvidia/deepstream/deepstream-5.0/lib/libnvds_mot_klt.so",
-    "enable-batch-process" : 1
-  }
-
+	"input_rtsp1": "rtsp://unecom1:test1234!@unecom.iptime.org/h264",
+	"input_rtsp2": "rtsp://unecom1:test1234!@unecom.iptime.org/h264",
+	"input_video": "sample_videos/event_d-02.264",
+	"output_video": "output_videos/headhelmet.mp4",
+	"pgie_config": "/home/files/cnsi-deepstream/models/peoplenet/peoplenet.cfg",
+	"sgie_config": "/home/files/cnsi-deepstream/models/headhelmet/headhelmet.cfg",
+	"tracker": {
+		"tracker-width": 640,
+		"tracker-height": 384,
+		"gpu-id": 0,
+		"ll-lib-file": "/opt/nvidia/deepstream/deepstream-5.0/lib/libnvds_mot_klt.so",
+		"enable-batch-process": 1
+	}
 }
