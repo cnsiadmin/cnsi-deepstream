@@ -5,12 +5,12 @@ import base64
 
 def send_no_helmet_event(url, screenshot):
 
-    RTSPINPUT_URI = "rtsp://admin:Tldosdptmdk2@223.171.56.203:554/profile2/media.smp"
+    #RTSPINPUT_URI = "rtsp://admin:Tldosdptmdk2@223.171.56.203:554/profile2/media.smp"
     # cap = cv2.VideoCapture(RTSPINPUT_URI)
     # ret, frame = cap.read()
     # converted = cv2.imencode('.jpg', frame)[1].tostring()
-    screenshot = screenshot.tostring()
-    converted = base64.b64encode(screenshot).decode('utf-8')
+    jpgImg = cv2.imencode('.jpg', screenshot)[1].tostring()
+    converted = base64.b64encode(jpgImg).decode('utf-8')
     #print(converted)
     #converted = converted.decode('utf8')
     #print(converted)
@@ -34,6 +34,6 @@ def send_no_helmet_event(url, screenshot):
     body = json.dumps(body)
     #print(header)
     #print(body)
-    x = requests.post(url, headers=header, data=body, timeout=3)
+    x = requests.post(url, headers=header, data=body, timeout=10)
 
     print(x.text.encode('utf8'))
