@@ -15,7 +15,7 @@ from utils.rtsp import create_source_bin, get_from_env
 
 def main(config):
     # Standard GStreamer initialization
-    RTSPINPUT_URI = config["input_rtsp"]
+    RTSPINPUT_URI = config["input_rtsp1"]
     input_video = config["input_video"]
     output_video = config["output_video"]
     GObject.threads_init()
@@ -197,7 +197,7 @@ def main(config):
     bus.connect ("message", bus_call, loop)
 
     # create a GstRtspStreamer insttance
-    RTSPOUTPUTPORTNUM = get_from_env('RTSPOUTPUTPORTNUM', '9001')
+    RTSPOUTPUTPORTNUM = get_from_env('RTSPOUTPUTPORTNUM', '8888')
     RTSPOUTPUTPATH = get_from_env('RTSPOUTPUTPATH', '/rtsp1') # The output URL's path
     CODEC = "H264"
     server = GstRtspServer.RTSPServer.new()

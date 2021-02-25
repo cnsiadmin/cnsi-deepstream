@@ -2,25 +2,18 @@ from flask import Flask
 from flask_restful import Resource, Api
 from flask_restful import reqparse
 import os, json
+import threading
 
 app = Flask(__name__)
 api = Api(app)
 
-class CreateUser(Resource):
-    def post(self):
-        try:
-            parser = reqparse.RequestParser()
-            parser.add_argument('email', type=str)
-            parser.add_argument('user_name', type=str)
-            parser.add_argument('password', type=str)
-            args = parser.parse_args()
+def restart_1():
+    os.system("docker exec cnsi_deepstream python3 /home/files/cnsi-deepstream/back_to_back_tracked_rtsp_1.py /home/files/cnsi-deepstream/configs/headhelmet.json &")
 
-            _userEmail = args['email']
-            _userName = args['user_name']
-            _userPassword = args['password']
-            return {'Email': args['email'], 'UserName': args['user_name'], 'Password': args['password']}
-        except Exception as e:
-            return {'error': str(e)}
+def restart_2():
+    os.system("docker exec cnsi_deepstream python3 /home/files/cnsi-deepstream/back_to_back_tracked_rtsp_2.py /home/files/cnsi-deepstream/configs/headhelmet.json &")
+
+
 
 class Edit(Resource):
     def get(self):
@@ -35,8 +28,10 @@ class Edit(Resource):
             with open(config_path, 'r') as f:
                 json_data = json.load(f)
 
-            json_data['input_rtsp1'] = args['input_rtsp1']
-            json_data['input_rtsp2'] = args['input_rtsp2']
+            if args['input_rtsp1'] != None:
+                json_data['input_rtsp1'] = args['input_rtsp1']
+            if args['input_rtsp2'] != None:
+                json_data['input_rtsp2'] = args['input_rtsp2']
 
             with open(config_path, 'w', encoding='utf-8') as make_file:
                 json.dump(json_data, make_file, indent="\t")
@@ -49,8 +44,11 @@ class Restart(Resource):
     def get(self):
         try:
             os.system("docker restart cnsi_deepstream")
-            os.system("docker exec cnsi_deepstream python3 /home/files/cnsi-deepstream/back_to_back_tracked_rtsp.py /home/files/cnsi-deepstream/configs/headhelmet.json")
-            return {'status': 'success'}
+            thread_1 = threading.Thread(target=restart_1)
+            thread_1.start()
+            thread_2 = threading.Thread(target=restart_2)
+            thread_2.start()
+            return {'status': 'Restart'}
         except Exception as e:
             return {'error': str(e)}
 
@@ -58,8 +56,11 @@ class Start(Resource):
     def get(self):
         try:
             os.system("docker restart cnsi_deepstream")
-            os.system("docker exec cnsi_deepstream python3 /home/files/cnsi-deepstream/back_to_back_tracked_rtsp.py /home/files/cnsi-deepstream/configs/headhelmet.json")
-            return {'status': 'success'}
+            thread_1 = threading.Thread(target=restart_1)
+            thread_1.start()
+            thread_2 = threading.Thread(target=restart_2)
+            thread_2.start()
+            return {'status': 'Start'}
         except Exception as e:
             return {'error': str(e)}
 
@@ -67,7 +68,7 @@ class Stop(Resource):
     def get(self):
         try:
             os.system("docker stop cnsi_deepstream")
-            return {'status': 'success'}
+            return {'status': 'Stop'}
         except Exception as e:
             return {'error': str(e)}
 
@@ -87,4 +88,14 @@ api.add_resource(Edit, '/edit')
 api.add_resource(Reboot, '/reboot')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=80)
+
+    try:
+        os.system("docker restart cnsi_deepstream")
+        thread_1 = threading.Thread(target=restart_1)
+        thread_1.start()
+        thread_2 = threading.Thread(target=restart_2)
+        thread_2.start()
+    except Exception as e:
+        print(e)
+
+    app.run(debug=False, host='0.0.0.0', port=80)
