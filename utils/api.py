@@ -3,7 +3,7 @@ import time
 import cv2
 import base64
 
-def send_no_helmet_event(url, screenshot):
+def send_no_helmet_event(url, screenshot, camID):
 
     #RTSPINPUT_URI = "rtsp://admin:Tldosdptmdk2@223.171.56.203:554/profile2/media.smp"
     # cap = cv2.VideoCapture(RTSPINPUT_URI)
@@ -23,9 +23,12 @@ def send_no_helmet_event(url, screenshot):
     "command" : "InputEventVideoAnalysis"
     }
 
+    site_id =  "{:04}".format(camID)
+    cam_id =  "{:07}".format(camID)
+
     body = {
-    "siteId" : "0001" ,
-    "cameraId" : "0000001",
+    "siteId" : site_id ,
+    "cameraId" : cam_id,
     "eventType" : "1",
     "screenshotImage" : converted,
     "time" : time.strftime('%Y%m%d%H24%M%S', time.localtime())

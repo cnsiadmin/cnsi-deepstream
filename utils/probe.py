@@ -107,6 +107,9 @@ def osd_sink_pad_buffer_probe_dummy(pad,info,u_data):
 
 
 def api_probe(pad, info, u_data):
+
+    print("camID : {}".format(u_data))
+
     global CNT_nonHelmet
 
     people_cnt = 0
@@ -146,15 +149,16 @@ def api_probe(pad, info, u_data):
             except StopIteration:
                 break
         #*********** OBJECT METADATA ******************
-        if people_cnt > helmet_cnt:
+        if people_cnt > 0 and people_cnt > helmet_cnt:
             CNT_nonHelmet +=1
         else:
             CNT_nonHelmet = 0
+
         if CNT_nonHelmet > 60:
             try:
                 screenshot = frame2image(gst_buffer, frame_meta)
                 url_ = "http://unecom.iptime.org:8080/riskzero_ys/uapi/inputEventVideoAnalysis"
-                thread_send = threading.Thread(target=send_no_helmet_event, args=(url_, screenshot))
+                thread_send = threading.Thread(target=send_no_helmet_event, args=(url_, screenshot, u_data))
                 thread_send.start()
                 print("send")
 

@@ -154,7 +154,7 @@ def main(config):
     if not sgie_srcpad:
         sys.stderr.write(" Unable to get source pad of sgie_srcpad \n")
     osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
-    osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, api_probe, 0)
+    osdsinkpad.add_probe(Gst.PadProbeType.BUFFER, api_probe, 1)
 
     ################################################################################
     ############# *** ADD elements into the pipeline and LINK them *** #############
