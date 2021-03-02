@@ -2,7 +2,7 @@ import pyds
 from gi.repository import GObject, Gst
 from utils.api import send_no_helmet_event
 #from .parser import ssd96_custom_parser, add_secondary_ssd96_obj_meta_to_frame
-import cv2
+import cv2, json
 import numpy as np
 import threading
 
@@ -10,6 +10,12 @@ PGIE_CLASS_ID_PERSON = 0
 PGIE_CLASS_ID_BAG = 1
 PGIE_CLASS_ID_FACE = 2
 CNT_nonHelmet = 0
+
+config_path = '/home/files/cnsi-deepstream/configs/headhelmet.json'
+with open(config_path, 'r') as f:
+    json_data = json.load(f)
+url_ = json_data['server_url']
+
 
 def debug_probe(pad,info,u_data):
     print("It is running")
@@ -110,7 +116,7 @@ def api_probe(pad, info, u_data):
 
     print("camID : {}".format(u_data))
 
-    global CNT_nonHelmet
+    global CNT_nonHelmet, url_
 
     people_cnt = 0
     helmet_cnt = 0
@@ -157,7 +163,7 @@ def api_probe(pad, info, u_data):
         if CNT_nonHelmet > 60:
             try:
                 screenshot = frame2image(gst_buffer, frame_meta)
-                url_ = "http://unecom.iptime.org:8080/riskzero_ys/uapi/inputEventVideoAnalysis"
+                #url_ = "http://unecom.iptime.org:8080/riskzero_ys/uapi/inputEventVideoAnalysis"
                 thread_send = threading.Thread(target=send_no_helmet_event, args=(url_, screenshot, u_data))
                 thread_send.start()
                 print("send")

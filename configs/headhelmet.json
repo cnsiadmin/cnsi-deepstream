@@ -11,5 +11,6 @@
 		"gpu-id": 0,
 		"ll-lib-file": "/opt/nvidia/deepstream/deepstream-5.0/lib/libnvds_mot_klt.so",
 		"enable-batch-process": 1
-	}
+	},
+	"server_url": "http://unecom.iptime.org:8080/riskzero_ys/uapi/inputEventVideoAnalysis"
 }

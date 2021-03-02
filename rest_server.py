@@ -21,6 +21,7 @@ class Edit(Resource):
             parser = reqparse.RequestParser()
             parser.add_argument('input_rtsp1', type=str)
             parser.add_argument('input_rtsp2', type=str)
+            parser.add_argument('server_url', type=str)
             args = parser.parse_args()
 
             #config_path = '/home/files/cnsi-deepstream/configs/headhelmet.json'
@@ -32,11 +33,13 @@ class Edit(Resource):
                 json_data['input_rtsp1'] = args['input_rtsp1']
             if args['input_rtsp2'] != None:
                 json_data['input_rtsp2'] = args['input_rtsp2']
+            if args['server_url'] != None:
+                json_data['server_url'] = args['server_url']
 
             with open(config_path, 'w', encoding='utf-8') as make_file:
                 json.dump(json_data, make_file, indent="\t")
 
-            return {'input_rtsp1': args['input_rtsp1'], 'input_rtsp2': args['input_rtsp2'], 'status': 'success' }
+            return {'input_rtsp1': args['input_rtsp1'], 'input_rtsp2': args['input_rtsp2'], 'server_url': args['server_url'], 'status': 'success' }
         except Exception as e:
             return {'error': str(e)}
 
@@ -76,7 +79,25 @@ class Reboot(Resource):
     def get(self):
         try:
             os.system("reboot")
-            return {'status': 'success'}
+            return {'status': 'reboot'}
+        except Exception as e:
+            return {'error': str(e)}
+
+class Shutdown(Resource):
+    def get(self):
+        try:
+            os.system("shutdown -h now")
+            return {'status': 'shutdown'}
+        except Exception as e:
+            return {'error': str(e)}
+
+class Network_apply(Resource):
+    def get(self):
+        try:
+            print("")
+            os.system("netplan apply")
+            os.system("reboot")
+            return {'status': 'network_apply'}
         except Exception as e:
             return {'error': str(e)}
 
@@ -86,6 +107,8 @@ api.add_resource(Start, '/start')
 api.add_resource(Stop, '/stop')
 api.add_resource(Edit, '/edit')
 api.add_resource(Reboot, '/reboot')
+api.add_resource(Shutdown, '/shutdown')
+api.add_resource(Network_apply, '/network_apply')
 
 if __name__ == '__main__':
 
