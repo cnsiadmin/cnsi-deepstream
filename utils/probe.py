@@ -4,12 +4,14 @@ from utils.api import send_no_helmet_event
 #from .parser import ssd96_custom_parser, add_secondary_ssd96_obj_meta_to_frame
 import cv2, json
 import numpy as np
-import threading
+import threading, shutil, datetime
 
 PGIE_CLASS_ID_PERSON = 0
 PGIE_CLASS_ID_BAG = 1
 PGIE_CLASS_ID_FACE = 2
 CNT_nonHelmet = 0
+IMWRITE_PERIOD = 30
+CNT_IMWRITE = 0
 
 config_path = '/home/files/cnsi-deepstream/configs/headhelmet.json'
 with open(config_path, 'r') as f:
@@ -114,9 +116,9 @@ def osd_sink_pad_buffer_probe_dummy(pad,info,u_data):
 
 def api_probe(pad, info, u_data):
 
-    print("camID : {}".format(u_data))
+    #print("camID : {}".format(u_data))
 
-    global CNT_nonHelmet, url_
+    global CNT_nonHelmet, url_, IMWRITE_PERIOD, CNT_IMWRITE
 
     people_cnt = 0
     helmet_cnt = 0
@@ -155,6 +157,23 @@ def api_probe(pad, info, u_data):
             except StopIteration:
                 break
         #*********** OBJECT METADATA ******************
+
+
+        #*********** COLLECT LOCAL DATA ***************
+        if people_cnt > 0 and CNT_IMWRITE % IMWRITE_PERIOD == 0:
+            total, used, free = shutil.disk_usage("/home/files")
+            if free > 5000000000:
+                now = datetime.datetime.now()
+                fileName = now.strftime('%Y-%m-%d')
+                screenshot_to_write = frame2image(gst_buffer, frame_meta)
+                cv2.imwrite("/home/files/cam_{}/cam_{}_{}.jpg".format(u_data, u_data, fileName), screenshot_to_write)
+                CNT_IMWRITE = 0
+
+        CNT_IMWRITE = CNT_IMWRITE + 1
+        if people_cnt == 0:
+            CNT_IMWRITE = 0
+        #*********** COLLECT LOCAL DATA ***************
+
         if people_cnt > 0 and people_cnt > helmet_cnt:
             CNT_nonHelmet +=1
         else:
